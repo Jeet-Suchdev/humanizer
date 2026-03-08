@@ -1,5 +1,6 @@
 from langchain_groq import ChatGroq
-from lkangchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.prompts import ChatPromptTemplate
 import json
 import os
 from dotenv import load_dotenv
@@ -32,11 +33,17 @@ Respond ONLY with a JSON object in this exact format:
   "overall_feedback": "brief overall comment"
 }"""
 
+critic_prompt = ChatPromptTemplate.from_messages(
+    input_variables = ["text"],
+    validate_template = True,
+    messages = [
+        ("system", CRITIC_SYSTEM_PROMPT),
+        ("human", "Evaluate this text for academic suitability:\n\n{text}")
+    ]
+)
+
 async def check_academic_quality(text : str) -> dict:
-  messages = [
-    SystemMessage(content = CRITIC_SYSTEM_PROMPT),
-    HumanMessage(content = f"Evaluate this text  fro academic suitability:\n\n{text}")
-  ]
+  messages = critic_prompt.format_messages(text = text)
 
   response = await llm.ainvoke(messages)
   try:

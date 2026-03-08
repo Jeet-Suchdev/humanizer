@@ -1,5 +1,6 @@
 from langcgain_groq import ChatGroq
 from langcgain_core.messages import HumanMessage, SystemMessage
+from langchain_core.prompts import ChatPromptTemplate
 import os
 from dotenv import load_dotenv
 
@@ -27,6 +28,15 @@ Your job:
 CRITICAL: Do NOT change any facts, data, or core arguments. Only change the writing style.
 Output ONLY the rewritten text, no explanations."""
 
+humanizer_prompt = ChatPromptTemplate.from_messages(
+    input_variables = ["text", "flagged_info"],
+    validate_template = True,
+    messages = [
+        ("system", HUMANIZER_SYSTEM_PROMPT),
+        ("human", "Rewrite this text to sound natural and human-written: {flagged_info}\n\n---\n{text}\n--")
+    ]
+)
+
 async def humanize_text(text : str, flagged_sentences : list = None) -> str:
     max_flagged  = min(len(flagged_sentences), max(3, len(flagged_sentences) // 100))
     flagged_info = ""
@@ -35,10 +45,10 @@ async def humanize_text(text : str, flagged_sentences : list = None) -> str:
         for i, sentence in enumerate(flagged_sentences[:max_flagged], 1):
             flagged_info += f"{i}. {sentence}\n"
 
-    messages = [
-        SystemMessage(content = HUMANIZER_SYSTEM_PROMPT),
-        HumanMessage(content = f"Rewrite this text to sound natural and human-written: {flagged_info}\n\n---\n{text}\n--")
-    ]
+    messages = humanizer_prompt.format_messages(
+        text = text,
+        flagged_info = flagged_info
+    )
 
     response = await llm.ainvoke(messages)
     return response.content
